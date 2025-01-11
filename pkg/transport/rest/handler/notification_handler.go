@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"github.com/azeezlala/assessment/internal/pubsub/pkg"
 	"github.com/azeezlala/assessment/internal/repository"
 	"github.com/azeezlala/assessment/internal/service"
@@ -15,7 +14,6 @@ type NotificationHandler struct {
 }
 
 func NewNotificationHandler(sub pkg.IPubSub) *NotificationHandler {
-	fmt.Println("i'm here")
 	return &NotificationHandler{
 		NotificationService: service.NewNotificationService(repository.NewNotificationRepository(), sub),
 	}
