@@ -8,6 +8,8 @@ import (
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"ariga.io/atlas-provider-gorm/gormschema"
 )
 
 var (
@@ -57,4 +59,12 @@ func GetDB() *Database {
 		}
 	})
 	return dbInstance
+}
+
+func LoadStatements() (string, error) {
+	stmts, err := gormschema.New("postgres").Load(models...)
+	if err != nil {
+		return "", err
+	}
+	return stmts, nil
 }

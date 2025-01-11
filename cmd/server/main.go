@@ -36,7 +36,7 @@ func main() {
 		}
 	}
 
-	err := database.Migrate()
+	err := database.AutoMigrate()
 	if err != nil {
 		log.Fatalf("Unable to migrate: %v", err)
 		return
