@@ -10,7 +10,7 @@ import (
 )
 
 type CustomerResourceHandler struct {
-	customerResourceRepository service.ICustomerResourceService
+	customerResourceService service.ICustomerResourceService
 }
 
 func NewCustomerResource() *CustomerResourceHandler {
@@ -19,12 +19,13 @@ func NewCustomerResource() *CustomerResourceHandler {
 		service.WithResourceRepository(repository.NewResourceRepository()),
 		service.WithCustomerResourceRepository(repository.NewCustomerResourceRepository()),
 	)
-	return &CustomerResourceHandler{customerResourceRepository: customerRepository}
+	return &CustomerResourceHandler{customerResourceService: customerRepository}
 }
 func (h CustomerResourceHandler) RegisterRoutes(router *gin.Engine) {
 	crouter := router.Group("/customer-resources")
 	crouter.POST("/", h.createCustomerResource)
 	crouter.GET("/:customerId", h.getCustomerResource)
+	crouter.DELETE("/", h.deleteResource)
 }
 
 func (h *CustomerResourceHandler) createCustomerResource(ctx *gin.Context) {
@@ -39,7 +40,7 @@ func (h *CustomerResourceHandler) createCustomerResource(ctx *gin.Context) {
 		return
 	}
 
-	res, err := h.customerResourceRepository.CreateResource(ctx, body.ToCustomerResource())
+	res, err := h.customerResourceService.CreateResource(ctx, body.ToCustomerResource())
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, &model.ErrorResponse{
 			Status:  false,
@@ -58,7 +59,7 @@ func (h *CustomerResourceHandler) createCustomerResource(ctx *gin.Context) {
 func (h *CustomerResourceHandler) getCustomerResource(ctx *gin.Context) {
 	customerID := ctx.Param("customerId")
 
-	res, err := h.customerResourceRepository.FetchResourcesByCustomerID(ctx, customerID)
+	res, err := h.customerResourceService.FetchResourcesByCustomerID(ctx, customerID)
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusBadRequest, &model.ErrorResponse{
 			Status:  false,
@@ -72,4 +73,28 @@ func (h *CustomerResourceHandler) getCustomerResource(ctx *gin.Context) {
 		Message: "fetched resource successfully",
 		Data:    res,
 	})
+}
+
+func (h *CustomerResourceHandler) deleteResource(ctx *gin.Context) {
+	var body model.CustomerResourceRequest
+
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		log.Printf("error while parsing request body: %v", err)
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, &model.ErrorResponse{
+			Status:  false,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	err := h.customerResourceService.DeleteResource(ctx, body.ResourceID, body.CustomerID)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, &model.ErrorResponse{
+			Status:  false,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusNoContent, nil)
 }
