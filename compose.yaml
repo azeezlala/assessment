@@ -1,0 +1,92 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./api/Dockerfile
+    ports:
+      - "${PORT}:8082"
+    env_file:
+      - .env
+    environment:
+      - PORT=${PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+      - GRPC_PORT=${GRPC_PORT}
+      - GRPC_ADDRESS=notification:20012
+      - REDIS_URL=redis:6379
+      - ENV=PRODUCTION
+    networks:
+      - assessment
+    volumes:
+      - ./api:/go/src/github.com/azeezlala/assessment/api
+      - ./shared:/go/src/github.com/azeezlala/assessment/shared
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  notification:
+    build:
+      context: .
+      dockerfile: ./notification/Dockerfile
+    ports:
+      - "${GRPC_ADDRESS}:20012"
+    env_file:
+      - .env
+    environment:
+      - PORT=${GRPC_PORT}
+      - GRPC_PORT=${GRPC_PORT}
+      - REDIS_URL=redis:6379
+      - ENV=PRODUCTION
+    volumes:
+      - ./notification:/go/src/github.com/azeezlala/assessment/notification
+      - ./shared:/go/src/github.com/azeezlala/assessment/shared
+    networks:
+      - assessment
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - "${REDIS_PORT}:6379"
+    networks:
+      - assessment
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+      - PGDATA=/pgdata
+    networks:
+      - assessment
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+networks:
+  assessment:
+    driver: "bridge"
+
+volumes:
+  postgres_data:
